@@ -1,0 +1,16 @@
+export enum ActivityType {
+  TASK_CREATED = 'task_created',
+  TASK_UPDATED = 'task_updated',
+  TASK_DELETED = 'task_deleted',
+  TASK_MOVED = 'task_moved',
+  TASK_ASSIGNED = 'task_assigned',
+  COMMENT_ADDED = 'comment_added',
+  COMMENT_UPDATED = 'comment_updated',
+  COMMENT_DELETED = 'comment_deleted',
+  BOARD_CREATED = 'board_created',
+  BOARD_UPDATED = 'board_updated',
+  PROJECT_CREATED = 'project_created',
+  PROJECT_UPDATED = 'project_updated',
+  MEMBER_ADDED = 'member_added',
+  MEMBER_REMOVED = 'member_removed',
+}

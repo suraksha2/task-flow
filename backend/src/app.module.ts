@@ -10,6 +10,7 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { EmailModule } from './modules/email/email.module';
 import { RedisModule } from './modules/redis/redis.module';
+import { WebsocketModule } from './modules/websocket/websocket.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { RedisModule } from './modules/redis/redis.module';
     CommentsModule,
     ActivityModule,
     EmailModule,
+    WebsocketModule,
   ],
 })
 export class AppModule {}

@@ -6,12 +6,14 @@ import { BoardsService } from '../boards/boards.service';
 import { ActivityService } from '../activity/activity.service';
 import { TaskStatus } from '../../common/enums';
 import { EmailService } from '../email/email.service';
+import { WebsocketGateway } from '../websocket/websocket.gateway';
 export declare class TasksService {
     private tasksRepository;
     private boardsService;
     private activityService;
     private emailService;
-    constructor(tasksRepository: Repository<Task>, boardsService: BoardsService, activityService: ActivityService, emailService: EmailService);
+    private websocketGateway;
+    constructor(tasksRepository: Repository<Task>, boardsService: BoardsService, activityService: ActivityService, emailService: EmailService, websocketGateway: WebsocketGateway);
     create(createTaskDto: CreateTaskDto, user: User): Promise<Task>;
     findAllByBoard(boardId: string, user: User): Promise<Task[]>;
     findOne(id: string, user: User): Promise<Task>;

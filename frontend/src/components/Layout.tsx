@@ -11,6 +11,7 @@ import {
 import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { cn, getInitials } from '../lib/utils';
+import NotificationCenter from './NotificationCenter';
 
 const baseNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -132,12 +133,15 @@ export default function Layout() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex-1" />
-          <Link
-            to="/profile"
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <User className="w-5 h-5 text-gray-600" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <NotificationCenter />
+            <Link
+              to="/profile"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <User className="w-5 h-5 text-gray-600" />
+            </Link>
+          </div>
         </header>
 
         {/* Page content */}

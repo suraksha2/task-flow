@@ -6,14 +6,12 @@ import {
   UserCheck,
   UserX,
   Search,
-  MoreVertical,
   Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
-import Input from '../components/ui/Input';
 import api from '../lib/api';
 import type { User } from '../types';
 

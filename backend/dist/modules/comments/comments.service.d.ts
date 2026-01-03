@@ -4,11 +4,13 @@ import { CreateCommentDto, UpdateCommentDto } from './dto';
 import { User } from '../users/entities/user.entity';
 import { TasksService } from '../tasks/tasks.service';
 import { ActivityService } from '../activity/activity.service';
+import { WebsocketGateway } from '../websocket/websocket.gateway';
 export declare class CommentsService {
     private commentsRepository;
     private tasksService;
     private activityService;
-    constructor(commentsRepository: Repository<Comment>, tasksService: TasksService, activityService: ActivityService);
+    private websocketGateway;
+    constructor(commentsRepository: Repository<Comment>, tasksService: TasksService, activityService: ActivityService, websocketGateway: WebsocketGateway);
     create(createCommentDto: CreateCommentDto, user: User): Promise<Comment>;
     findAllByTask(taskId: string, user: User): Promise<Comment[]>;
     findOne(id: string, user: User): Promise<Comment>;

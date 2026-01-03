@@ -20,11 +20,13 @@ const comment_entity_1 = require("./entities/comment.entity");
 const tasks_service_1 = require("../tasks/tasks.service");
 const activity_service_1 = require("../activity/activity.service");
 const enums_1 = require("../../common/enums");
+const websocket_gateway_1 = require("../websocket/websocket.gateway");
 let CommentsService = class CommentsService {
-    constructor(commentsRepository, tasksService, activityService) {
+    constructor(commentsRepository, tasksService, activityService, websocketGateway) {
         this.commentsRepository = commentsRepository;
         this.tasksService = tasksService;
         this.activityService = activityService;
+        this.websocketGateway = websocketGateway;
     }
     async create(createCommentDto, user) {
         const task = await this.tasksService.findOne(createCommentDto.taskId, user);
@@ -40,7 +42,25 @@ let CommentsService = class CommentsService {
             projectId: task.board.projectId,
             taskId: task.id,
         });
-        return this.findOne(savedComment.id, user);
+        const fullComment = await this.findOne(savedComment.id, user);
+        this.websocketGateway.emitCommentAdded(task.id, task.boardId, fullComment);
+        if (task.assigneeId && task.assigneeId !== user.id) {
+            this.websocketGateway.emitNotification(task.assigneeId, {
+                type: 'comment_added',
+                title: 'New Comment',
+                message: `${user.firstName} commented on task "${task.title}"`,
+                data: { taskId: task.id, commentId: fullComment.id },
+            });
+        }
+        if (task.reporterId && task.reporterId !== user.id && task.reporterId !== task.assigneeId) {
+            this.websocketGateway.emitNotification(task.reporterId, {
+                type: 'comment_added',
+                title: 'New Comment',
+                message: `${user.firstName} commented on task "${task.title}"`,
+                data: { taskId: task.id, commentId: fullComment.id },
+            });
+        }
+        return fullComment;
     }
     async findAllByTask(taskId, user) {
         await this.tasksService.findOne(taskId, user);
@@ -89,7 +109,11 @@ let CommentsService = class CommentsService {
             projectId: comment.task.board.projectId,
             taskId: comment.taskId,
         });
+        const taskId = comment.taskId;
+        const boardId = comment.task.boardId;
+        const commentId = comment.id;
         await this.commentsRepository.remove(comment);
+        this.websocketGateway.emitCommentDeleted(taskId, boardId, commentId);
     }
 };
 exports.CommentsService = CommentsService;
@@ -98,6 +122,7 @@ exports.CommentsService = CommentsService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(comment_entity_1.Comment)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         tasks_service_1.TasksService,
-        activity_service_1.ActivityService])
+        activity_service_1.ActivityService,
+        websocket_gateway_1.WebsocketGateway])
 ], CommentsService);
 //# sourceMappingURL=comments.service.js.map

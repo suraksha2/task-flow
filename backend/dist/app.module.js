@@ -19,6 +19,7 @@ const comments_module_1 = require("./modules/comments/comments.module");
 const activity_module_1 = require("./modules/activity/activity.module");
 const email_module_1 = require("./modules/email/email.module");
 const redis_module_1 = require("./modules/redis/redis.module");
+const websocket_module_1 = require("./modules/websocket/websocket.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -53,6 +54,7 @@ exports.AppModule = AppModule = __decorate([
             comments_module_1.CommentsModule,
             activity_module_1.ActivityModule,
             email_module_1.EmailModule,
+            websocket_module_1.WebsocketModule,
         ],
     })
 ], AppModule);

@@ -11,6 +11,7 @@ import { BoardsService } from '../boards/boards.service';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityType, TaskStatus } from '../../common/enums';
 import { EmailService } from '../email/email.service';
+import { WebsocketGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
 export class TasksService {
@@ -20,6 +21,7 @@ export class TasksService {
     private boardsService: BoardsService,
     private activityService: ActivityService,
     private emailService: EmailService,
+    private websocketGateway: WebsocketGateway,
   ) {}
 
   async create(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
@@ -58,9 +60,21 @@ export class TasksService {
 
     if (createTaskDto.assigneeId) {
       await this.emailService.sendTaskAssignedEmail(savedTask);
+      
+      // Send real-time notification to assignee
+      this.websocketGateway.emitNotification(createTaskDto.assigneeId, {
+        type: 'task_assigned',
+        title: 'New Task Assigned',
+        message: `You have been assigned to task "${task.title}"`,
+        data: { taskId: savedTask.id, boardId: board.id },
+      });
     }
 
-    return this.findOne(savedTask.id, user);
+    // Emit real-time task created event
+    const fullTask = await this.findOne(savedTask.id, user);
+    this.websocketGateway.emitTaskCreated(board.id, fullTask);
+
+    return fullTask;
   }
 
   async findAllByBoard(boardId: string, user: User): Promise<Task[]> {
@@ -114,9 +128,21 @@ export class TasksService {
         projectId: task.board.projectId,
         taskId: task.id,
       });
+
+      // Send real-time notification to new assignee
+      this.websocketGateway.emitNotification(updateTaskDto.assigneeId, {
+        type: 'task_assigned',
+        title: 'Task Assigned',
+        message: `You have been assigned to task "${task.title}"`,
+        data: { taskId: task.id, boardId: task.boardId },
+      });
     }
 
-    return this.findOne(id, user);
+    // Emit real-time task updated event
+    const fullTask = await this.findOne(id, user);
+    this.websocketGateway.emitTaskUpdated(task.boardId, fullTask);
+
+    return fullTask;
   }
 
   async move(id: string, moveTaskDto: MoveTaskDto, user: User): Promise<Task> {
@@ -137,6 +163,13 @@ export class TasksService {
       metadata: { from: oldStatus, to: moveTaskDto.status },
     });
 
+    // Emit real-time task moved event
+    this.websocketGateway.emitTaskMoved(task.boardId, {
+      taskId: task.id,
+      newStatus: moveTaskDto.status,
+      newPosition: moveTaskDto.position,
+    });
+
     return this.findOne(id, user);
   }
 
@@ -150,7 +183,12 @@ export class TasksService {
       projectId: task.board.projectId,
     });
 
+    const boardId = task.boardId;
+    const taskId = task.id;
     await this.tasksRepository.remove(task);
+
+    // Emit real-time task deleted event
+    this.websocketGateway.emitTaskDeleted(boardId, taskId);
   }
 
   async reorderTasks(

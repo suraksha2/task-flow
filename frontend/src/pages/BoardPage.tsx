@@ -22,7 +22,8 @@ import Button from '../components/ui/Button';
 import TaskCard from '../components/TaskCard';
 import api from '../lib/api';
 import type { Board, Task, TaskStatus } from '../types';
-import { cn, statusLabels } from '../lib/utils';
+import { statusLabels } from '../lib/utils';
+import { useRealTimeBoard } from '../hooks/useRealTimeBoard';
 
 const COLUMNS: TaskStatus[] = ['todo', 'in_progress', 'in_review', 'done'];
 
@@ -30,6 +31,9 @@ export default function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
   const queryClient = useQueryClient();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  // Enable real-time updates for this board
+  useRealTimeBoard(boardId);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

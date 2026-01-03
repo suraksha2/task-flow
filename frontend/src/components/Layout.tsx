@@ -6,20 +6,29 @@ import {
   User,
   Menu,
   X,
+  Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { cn, getInitials } from '../lib/utils';
 
-const navigation = [
+const baseNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
+];
+
+const adminNavigation = [
+  { name: 'User Management', href: '/admin/users', icon: Shield },
 ];
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuthStore();
   const location = useLocation();
+
+  const navigation = user?.role === 'admin' 
+    ? [...baseNavigation, ...adminNavigation]
+    : baseNavigation;
 
   const handleLogout = () => {
     logout();
@@ -99,6 +108,7 @@ export default function Layout() {
                 {user?.firstName} {user?.lastName}
               </p>
               <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+              <p className="text-xs text-primary-600 capitalize font-medium">{user?.role}</p>
             </div>
           </div>
           <button

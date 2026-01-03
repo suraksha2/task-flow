@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import Layout from './components/Layout';
+import RoleGuard from './components/RoleGuard';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -8,6 +9,8 @@ import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import BoardPage from './pages/BoardPage';
 import TaskDetailPage from './pages/TaskDetailPage';
+import AdminPage from './pages/AdminPage';
+import ProfilePage from './pages/ProfilePage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -52,6 +55,15 @@ function App() {
         <Route path="projects/:projectId" element={<ProjectDetailPage />} />
         <Route path="boards/:boardId" element={<BoardPage />} />
         <Route path="tasks/:taskId" element={<TaskDetailPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route
+          path="admin/users"
+          element={
+            <RoleGuard allowedRoles={['admin']}>
+              <AdminPage />
+            </RoleGuard>
+          }
+        />
       </Route>
     </Routes>
   );

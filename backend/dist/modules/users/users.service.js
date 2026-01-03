@@ -16,7 +16,9 @@ exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const bcrypt = require("bcrypt");
 const user_entity_1 = require("./entities/user.entity");
+const enums_1 = require("../../common/enums");
 let UsersService = class UsersService {
     constructor(usersRepository) {
         this.usersRepository = usersRepository;
@@ -47,6 +49,47 @@ let UsersService = class UsersService {
         if (result.affected === 0) {
             throw new common_1.NotFoundException('User not found');
         }
+    }
+    async updateRole(id, role) {
+        const user = await this.findById(id);
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        user.role = role;
+        return this.usersRepository.save(user);
+    }
+    async toggleUserStatus(id) {
+        const user = await this.findById(id);
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        user.isActive = !user.isActive;
+        return this.usersRepository.save(user);
+    }
+    async changePassword(id, currentPassword, newPassword) {
+        const user = await this.findById(id);
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isPasswordValid) {
+            throw new common_1.BadRequestException('Current password is incorrect');
+        }
+        user.password = await bcrypt.hash(newPassword, 10);
+        await this.usersRepository.save(user);
+    }
+    async getUserStats() {
+        const users = await this.usersRepository.find();
+        const stats = {
+            total: users.length,
+            active: users.filter(u => u.isActive).length,
+            byRole: {
+                admin: users.filter(u => u.role === enums_1.Role.ADMIN).length,
+                manager: users.filter(u => u.role === enums_1.Role.MANAGER).length,
+                user: users.filter(u => u.role === enums_1.Role.USER).length,
+            },
+        };
+        return stats;
     }
 };
 exports.UsersService = UsersService;

@@ -2,10 +2,13 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Delete,
   Param,
   Body,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
@@ -15,6 +18,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Role } from '../../common/enums';
 import { User } from './entities/user.entity';
+import { UpdateUserDto, AdminUpdateUserDto, ChangePasswordDto } from './dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -47,10 +51,58 @@ export class UsersController {
   @ApiOperation({ summary: 'Update current user profile' })
   updateProfile(
     @CurrentUser() user: User,
-    @Body() updateData: Partial<User>,
+    @Body() updateData: UpdateUserDto,
   ) {
-    const { password, role, refreshToken, ...safeData } = updateData;
-    return this.usersService.update(user.id, safeData);
+    return this.usersService.update(user.id, updateData);
+  }
+
+  @Post('me/change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change current user password' })
+  async changePassword(
+    @CurrentUser() user: User,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    await this.usersService.changePassword(
+      user.id,
+      changePasswordDto.currentPassword,
+      changePasswordDto.newPassword,
+    );
+    return { message: 'Password changed successfully' };
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Update user (Admin only)' })
+  updateUser(
+    @Param('id') id: string,
+    @Body() updateData: AdminUpdateUserDto,
+  ) {
+    return this.usersService.update(id, updateData);
+  }
+
+  @Patch(':id/role')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Update user role (Admin only)' })
+  updateRole(
+    @Param('id') id: string,
+    @Body('role') role: Role,
+  ) {
+    return this.usersService.updateRole(id, role);
+  }
+
+  @Patch(':id/toggle-status')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Toggle user active status (Admin only)' })
+  toggleStatus(@Param('id') id: string) {
+    return this.usersService.toggleUserStatus(id);
+  }
+
+  @Get('stats')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get user statistics (Admin only)' })
+  getStats() {
+    return this.usersService.getUserStats();
   }
 
   @Delete(':id')

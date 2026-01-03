@@ -22,6 +22,7 @@ const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const current_user_decorator_1 = require("../auth/decorators/current-user.decorator");
 const enums_1 = require("../../common/enums");
 const user_entity_1 = require("./entities/user.entity");
+const dto_1 = require("./dto");
 let UsersController = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
@@ -36,8 +37,23 @@ let UsersController = class UsersController {
         return this.usersService.findById(id);
     }
     updateProfile(user, updateData) {
-        const { password, role, refreshToken, ...safeData } = updateData;
-        return this.usersService.update(user.id, safeData);
+        return this.usersService.update(user.id, updateData);
+    }
+    async changePassword(user, changePasswordDto) {
+        await this.usersService.changePassword(user.id, changePasswordDto.currentPassword, changePasswordDto.newPassword);
+        return { message: 'Password changed successfully' };
+    }
+    updateUser(id, updateData) {
+        return this.usersService.update(id, updateData);
+    }
+    updateRole(id, role) {
+        return this.usersService.updateRole(id, role);
+    }
+    toggleStatus(id) {
+        return this.usersService.toggleUserStatus(id);
+    }
+    getStats() {
+        return this.usersService.getUserStats();
     }
     remove(id) {
         return this.usersService.delete(id);
@@ -75,9 +91,58 @@ __decorate([
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [user_entity_1.User, Object]),
+    __metadata("design:paramtypes", [user_entity_1.User,
+        dto_1.UpdateUserDto]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "updateProfile", null);
+__decorate([
+    (0, common_1.Post)('me/change-password'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Change current user password' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [user_entity_1.User,
+        dto_1.ChangePasswordDto]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "changePassword", null);
+__decorate([
+    (0, common_1.Patch)(':id'),
+    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Update user (Admin only)' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, dto_1.AdminUpdateUserDto]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "updateUser", null);
+__decorate([
+    (0, common_1.Patch)(':id/role'),
+    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Update user role (Admin only)' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('role')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "updateRole", null);
+__decorate([
+    (0, common_1.Patch)(':id/toggle-status'),
+    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Toggle user active status (Admin only)' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "toggleStatus", null);
+__decorate([
+    (0, common_1.Get)('stats'),
+    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Get user statistics (Admin only)' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "getStats", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { Plus, ArrowLeft, Settings } from 'lucide-react';
+import { Plus, ArrowLeft, Settings, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -11,7 +11,7 @@ import { Card, CardContent } from '../components/ui/Card';
 import api from '../lib/api';
 import type { Project, Board } from '../types';
 
-interface CreateBoardForm {
+interface BoardForm {
   name: string;
   description: string;
 }
@@ -19,10 +19,13 @@ interface CreateBoardForm {
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [selectedBoard, setSelectedBoard] = useState<Board | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateBoardForm>();
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<BoardForm>();
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
@@ -42,7 +45,7 @@ export default function ProjectDetailPage() {
   });
 
   const createBoardMutation = useMutation({
-    mutationFn: async (data: CreateBoardForm) => {
+    mutationFn: async (data: BoardForm) => {
       const response = await api.post<Board>('/boards', {
         ...data,
         projectId,
@@ -60,8 +63,70 @@ export default function ProjectDetailPage() {
     },
   });
 
-  const onSubmitBoard = (data: CreateBoardForm) => {
+  const updateBoardMutation = useMutation({
+    mutationFn: async (data: BoardForm & { id: string }) => {
+      const { id, ...updateData } = data;
+      const response = await api.patch<Board>(`/boards/${id}`, updateData);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['boards', projectId] });
+      setIsEditModalOpen(false);
+      setSelectedBoard(null);
+      reset();
+      toast.success('Board updated successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update board');
+    },
+  });
+
+  const deleteBoardMutation = useMutation({
+    mutationFn: async (boardId: string) => {
+      await api.delete(`/boards/${boardId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['boards', projectId] });
+      toast.success('Board deleted successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete board');
+    },
+  });
+
+  const onSubmitBoard = (data: BoardForm) => {
     createBoardMutation.mutate(data);
+  };
+
+  const onUpdateBoard = (data: BoardForm) => {
+    if (selectedBoard) {
+      updateBoardMutation.mutate({ ...data, id: selectedBoard.id });
+    }
+  };
+
+  const handleEditBoard = (board: Board, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedBoard(board);
+    setValue('name', board.name);
+    setValue('description', board.description || '');
+    setIsEditModalOpen(true);
+    setOpenMenuId(null);
+  };
+
+  const handleDeleteBoard = (boardId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this board? All tasks will be deleted.')) {
+      deleteBoardMutation.mutate(boardId);
+    }
+    setOpenMenuId(null);
+  };
+
+  const toggleMenu = (boardId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpenMenuId(openMenuId === boardId ? null : boardId);
   };
 
   if (isLoading) {
@@ -123,19 +188,49 @@ export default function ProjectDetailPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {boards.map((board) => (
-              <Link key={board.id} to={`/boards/${board.id}`}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                  <CardContent className="p-6">
-                    <h3 className="font-semibold text-gray-900">{board.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {board.description || 'No description'}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-3">
-                      {board.tasks?.length || 0} tasks
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
+              <div key={board.id} className="relative">
+                <Link to={`/boards/${board.id}`}>
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-semibold text-gray-900">{board.name}</h3>
+                        <button
+                          onClick={(e) => toggleMenu(board.id, e)}
+                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          <MoreVertical className="w-4 h-4 text-gray-500" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {board.description || 'No description'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-3">
+                        {board.tasks?.length || 0} tasks
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+                
+                {/* Dropdown Menu */}
+                {openMenuId === board.id && (
+                  <div className="absolute right-2 top-12 z-10 bg-white rounded-lg shadow-lg border py-1 min-w-[120px]">
+                    <button
+                      onClick={(e) => handleEditBoard(board, e)}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteBoard(board.id, e)}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -178,6 +273,56 @@ export default function ProjectDetailPage() {
             </Button>
             <Button type="submit" isLoading={createBoardMutation.isPending}>
               Create Board
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Board Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedBoard(null);
+          reset();
+        }}
+        title="Edit Board"
+      >
+        <form onSubmit={handleSubmit(onUpdateBoard)} className="space-y-4">
+          <Input
+            label="Board Name"
+            placeholder="Sprint 1"
+            error={errors.name?.message}
+            {...register('name', {
+              required: 'Board name is required',
+              minLength: { value: 2, message: 'Min 2 characters' },
+            })}
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              rows={3}
+              placeholder="Describe your board..."
+              {...register('description')}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setSelectedBoard(null);
+                reset();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={updateBoardMutation.isPending}>
+              Save Changes
             </Button>
           </div>
         </form>

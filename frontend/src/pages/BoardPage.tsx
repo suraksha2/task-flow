@@ -17,13 +17,23 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import Button from '../components/ui/Button';
+import Modal from '../components/ui/Modal';
+import Input from '../components/ui/Input';
 import TaskCard from '../components/TaskCard';
 import api from '../lib/api';
-import type { Board, Task, TaskStatus } from '../types';
+import type { Board, Task, TaskStatus, TaskPriority } from '../types';
 import { statusLabels } from '../lib/utils';
 import { useRealTimeBoard } from '../hooks/useRealTimeBoard';
+
+interface CreateTaskForm {
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+}
 
 const COLUMNS: TaskStatus[] = ['todo', 'in_progress', 'in_review', 'done'];
 
@@ -31,6 +41,19 @@ export default function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
   const queryClient = useQueryClient();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateTaskForm>({
+    defaultValues: {
+      status: 'todo',
+      priority: 'medium',
+    },
+  });
 
   // Enable real-time updates for this board
   useRealTimeBoard(boardId);
@@ -68,6 +91,25 @@ export default function BoardPage() {
       toast.error('Failed to move task');
     },
   });
+
+  const createTaskMutation = useMutation({
+    mutationFn: async (data: CreateTaskForm) => {
+      await api.post('/tasks', { ...data, boardId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', boardId] });
+      toast.success('Task created successfully');
+      setIsCreateModalOpen(false);
+      reset();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create task');
+    },
+  });
+
+  const onCreateTask = (data: CreateTaskForm) => {
+    createTaskMutation.mutate(data);
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = tasks.find((t) => t.id === event.active.id);
@@ -115,7 +157,7 @@ export default function BoardPage() {
           <h1 className="text-2xl font-bold text-gray-900">{board?.name}</h1>
           <p className="text-gray-600">{board?.description}</p>
         </div>
-        <Button>
+        <Button onClick={() => setIsCreateModalOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add Task
         </Button>
@@ -158,6 +200,79 @@ export default function BoardPage() {
           {activeTask && <TaskCard task={activeTask} isDragging />}
         </DragOverlay>
       </DndContext>
+
+      {/* Create Task Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create New Task"
+      >
+        <form onSubmit={handleSubmit(onCreateTask)} className="space-y-4">
+          <Input
+            label="Title"
+            placeholder="Enter task title"
+            error={errors.title?.message}
+            {...register('title', { required: 'Title is required' })}
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              rows={3}
+              placeholder="Enter task description (optional)"
+              {...register('description')}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Status
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                {...register('status')}
+              >
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="in_review">In Review</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Priority
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                {...register('priority')}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsCreateModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={createTaskMutation.isPending}>
+              Create Task
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
